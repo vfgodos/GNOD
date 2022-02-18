@@ -41,7 +41,7 @@ def cluster_for_a_Song(SongAudioFeatures, kmeans, scaler=joblib.load('scaler.bin
     #Scaling X
     X_prep = scaler.transform(X_audio)
     #Aplying KMeans to calculate the cluster
-    cluster = kmeans.predict(X_prep)
+    cluster = kmeansCreated.predict(X_prep)
     
     return (cluster)
 
@@ -60,7 +60,7 @@ for line in string.split('\n'):
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=secrets_dict['cid'],
                                                            client_secret=secrets_dict['cs']))
 
-#Code for obtaning the DF from Spotify
+#Code for obtaning the DF from Spotify API
 '''
 def get_playlist_tracks(playlist_id):
     results = sp.user_playlist_tracks("spotify",playlist_id)
@@ -148,86 +148,25 @@ scaler = StandardScaler()
 X_prep = scaler.fit_transform(X_audio)
 joblib.dump(scaler, 'scaler.bin')
 #Aplying KMeans
-kmeans = KMeans(n_clusters=4, random_state=1234)
-kmeans.fit(X_prep)
-clusters = kmeans.predict(X_prep)
+kmeansCreated = KMeans(n_clusters=4, random_state=1234)
+kmeansCreated.fit(X_prep)
+clusters = kmeansCreated.predict(X_prep)
 #Creating a column with the cluster from each Song
 audioFeatures2['cluster'] = clusters
 
-#Code for obtaning the "Hot songs" list from playback.fm
-'''
-iterations = range(1900, 2011, 10)
-[i for i in iterations]
-
-pages = []
-
-for i in iterations:
-    # assemble the url:
-    start_at= str(i)
-    url = "https://playback.fm/one-hit-wonders-" + start_at + "s"
-
-    # download html with a get request:
-    response = requests.get(url)
-
-    # monitor the process by printing the status code
-    #print("Status code: " + str(response.status_code))
-
-    # store response into "pages" list
-    pages.append(response)
-
-    # respectful nap:
-    wait_time = randint(1,4)
-    #print("I will sleep for " + str(wait_time) + " second/s.")
-    sleep(wait_time)
-    
-from bs4 import BeautifulSoup
-pages_parsed = []
-titles = []
-artists = []
-
-for i in range(len(pages)):
-    # parse all pages
-    pages_parsed.append(BeautifulSoup(pages[i].content, "html.parser"))
-    # select only the info about the songs
-    songs_html = pages_parsed[i].select("div.content.post")
-    # for song, store title and artist into lists
-    for j in range(len(songs_html)):
-        num_iter = len(songs_html[j].select("p.song-title a"))
-        for k in range(num_iter):
-            titles.append(songs_html[j].select("p.song-title a")[k].get_text())
-            artists.append(songs_html[j].select("p.song-title strong")[k].get_text().strip())
-
-#DF of "Hot songs"
-topsongs = pd.DataFrame({"title":titles,
-                              "artist":artists
-                             })
-#Droping duplicates 
-topsongs = topsongs.drop_duplicates()
-'''
-
-#Importing a saved copy of the "Hot songs" which I obtained with the instructions above
-topsongs = pd.read_csv('HOTSongs.csv')
-
+#
 #Looking for a Recomendation
+#
 
 #Asking for a Song
 print("What is your song title?")
 favSong = input()
 
-#Looking for a Recomendation
 
-#If it's in the "Hot songs" list, I will recommend another "Hot song"
-if favSong in topsongs['title'].values: 
-    RecSong = topsongs['title'].sample().to_string(index=False)
-    print("Recommended song:", RecSong)
-    #Looking for it on Spotify
-    song = sp.search(q=RecSong, limit=1)
-    if len(song['tracks']['items']) > 0:
-        link = song["tracks"]["items"][0]['external_urls']['spotify']
-        print("You can find it here:", link)
+#Looking for a Recomendation
         
 #If it's in the general list, I will recommend a song from its cluster    
-elif favSong in audioFeatures2['title'].values:
+if favSong in audioFeatures2['title'].values:
     songRow = audioFeatures2[audioFeatures2.title == favSong]
     PossSongs = audioFeatures2[audioFeatures2.cluster == int(songRow.cluster.to_string(index=False))]
     RecSong = PossSongs['title'].sample().to_string(index=False)
@@ -247,7 +186,7 @@ else:
     if ((len(song['tracks']['items']) > 0) & (len(audio)>0)):
         #Calculating its cluster
         SongAudioFeatures = SongAudioFeat(song, audio)
-        cluster = int(cluster_for_a_Song(SongAudioFeatures, kmeans))
+        cluster = int(cluster_for_a_Song(SongAudioFeatures, kmeansCreated))
         #Recomending a song with the same cluster
         PossSongs = audioFeatures2[audioFeatures2.cluster == cluster]
         RecSong = PossSongs['title'].sample().to_string(index=False)
@@ -255,8 +194,13 @@ else:
         #Looking for it on Spotify
         song = sp.search(q=RecSong, limit=1)
         link = song["tracks"]["items"][0]['external_urls']['spotify']
-        print("You can find it here:", link)
+        print("You can listen it here:", link)
+        
+        #Looking for an artist
+        RecArtist = PossSongs['artist'].sample().to_string(index=False)
+        artist = sp.search(q=RecArtist, limit=1)
+        print("Recommended artist:", RecArtist)
+        link = artist["tracks"]["items"][0]['external_urls']['spotify']
+        print("You can listen one of his songs here:", link)
     else: 
         print("Your song is not listed on Spotify or its audio features are not available")
-
-
