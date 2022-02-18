@@ -1,6 +1,6 @@
 ## Files
 
-To execute correctly the script "GNODprojectHotSongs.py":
+To execute correctly the scripts "GNODprojectV2.py" and "GNODprojectHotSongs.py":
 > You need create a file called SpotifySecret.txt, wich contains your Spotify credentials, with the next form: 
 >
 >      cid: _yourID_
