@@ -13,24 +13,8 @@ from sklearn.cluster import KMeans
 
 #Defining functions
 
-#Function to create clusters from a DF and label each row with them
-def clustering_a_DF(audioFeaturesDF, n):
-    #Splitting the DF
-    y = audioFeaturesDF['title']
-    X_audio = audioFeaturesDF.drop(['title'], axis=1)
-    #Scaling X
-    X_prep = StandardScaler().fit_transform(X_audio)
-    #Aplying KMeans
-    kmeans = KMeans(n_clusters=n, random_state=1234)
-    kmeans.fit(X_prep)
-    clusters = kmeans.predict(X_prep)
-    #Creating a column with the cluster from each Song
-    audioFeaturesDF['cluster'] = clusters
-    
-    return (audioFeaturesDF)
-
-#Function to find a song on Spotify and cluster it
-def Clustering_a_Song(song, audio, audioFeatures):
+#Function to get the audio features from a song and saving it on a DF
+def SongAudioFeat(song, audio):
     #Creating a DF with the audio Features
     SongAudioFeatures = pd.DataFrame()
     SongAudioFeatures["title"] = [song["tracks"]["items"][0]["name"]]
@@ -46,12 +30,19 @@ def Clustering_a_Song(song, audio, audioFeatures):
     SongAudioFeatures["valence"] = [audio[0]['valence']]
     SongAudioFeatures["tempo"] = [audio[0]['tempo']]
     
-    #Joining the song to the DF with all songs to find its cluster
-    audioFeatures = audioFeatures.append(SongAudioFeatures, ignore_index=True)
+    return(SongAudioFeatures)
+
+#Function to obtain the cluster from a song
+def cluster_for_a_Song(SongAudioFeatures, kmeans):
+    #Splitting the DF
+    y = SongAudioFeatures['title']
+    X_audio = SongAudioFeatures.drop(['title'], axis=1)
+    #Scaling X
+    X_prep = StandardScaler().fit_transform(X_audio)
+    #Aplying KMeans to calculate the cluster
+    cluster = kmeans.predict(X_prep)
     
-    audioFeatures = clustering_a_DF(audioFeatures, 4)
-    
-    return(audioFeatures)
+    return (cluster)
 
 #End of functions definitions
 
@@ -142,19 +133,23 @@ audioFeatures = pd.DataFrame({"title":title,
 #Importing a saved copy of the songs with their audio features which I obtained with the instructions above
 audioFeatures = pd.read_csv('TOPListsLarge.csv')
 #Droping duplicates
-audioFeatures2 = audioFeatures.drop_duplicates(['title'], keep='first')
-#Droping the artist because I don´t need it this time
-audioFeatures2 = audioFeatures2.drop(['artist'], axis=1)
+audioFeatures = audioFeatures.drop_duplicates(['title'], keep='first')
+#Creating a copy
+audioFeatures2 = audioFeatures.copy()
 
 #KMeans
 
-#Creating a copy
-audioFeatures3 = audioFeatures2.copy()
-audioFeatures3.head()
-
-#Clustering the songs
-audioFeatures2 = clustering_a_DF(audioFeatures2, 4)
-audioFeatures2.head()
+#Splitting the 2
+y = audioFeatures['title']
+X_audio = audioFeatures.drop(['artist','title'], axis=1)
+#Scaling X
+X_prep = StandardScaler().fit_transform(X_audio)
+#Aplying KMeans
+kmeans = KMeans(n_clusters=4, random_state=1234)
+kmeans.fit(X_prep)
+clusters = kmeans.predict(X_prep)
+#Creating a column with the cluster from each Song
+audioFeatures2['cluster'] = clusters
 
 #Code for obtaning the "Hot songs" list from playback.fm
 '''
@@ -210,6 +205,8 @@ topsongs = topsongs.drop_duplicates()
 #Importing a saved copy of the "Hot songs" which I obtained with the instructions above
 topsongs = pd.read_csv('HOTSongs.csv')
 
+#Looking for a Recomendation
+
 #Asking for a Song
 print("What is your song title?")
 favSong = input()
@@ -246,10 +243,10 @@ else:
     #Checking if it exists and it has audio features:
     if ((len(song['tracks']['items']) > 0) & (len(audio)>0)):
         #Calculating its cluster
-        audioFeaturesComp = Clustering_a_Song(song, audio, audioFeatures3)
+        SongAudioFeatures = SongAudioFeat(song, audio)
+        cluster = int(cluster_for_a_Song(SongAudioFeatures, kmeans))
         #Recomending a song with the same cluster
-        songRow = audioFeaturesComp[audioFeaturesComp.title == favSong]
-        PossSongs = audioFeatures2[audioFeatures2.cluster == int(songRow.cluster.to_string(index=False))]
+        PossSongs = audioFeatures2[audioFeatures2.cluster == cluster]
         RecSong = PossSongs['title'].sample().to_string(index=False)
         print("Recommended song:", RecSong)
         #Looking for it on Spotify
@@ -258,6 +255,5 @@ else:
         print("You can find it here:", link)
     else: 
         print("Your song is not listed on Spotify or its audio features are not available")
-
 
 
