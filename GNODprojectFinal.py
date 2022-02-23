@@ -81,38 +81,28 @@ all_tracks = []
 for i in range(len(plIds)):
     all_tracks = all_tracks + (get_playlist_tracks(plIds[i]))
 
-#Creating the DF
+#Getting a DF with the features I need
+
+#I create a list with the Audio Features that I want to get
+audioFeat = ['danceability','energy', 'key', 'loudness', 'mode', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']
+
+#I create empty lists for the Features I want in my DF
 title = []
 artist = []
-danceability = []
-energy = []
-key = []
-loudness = []
-mode = []
-speechiness = []
-acousticness = []
-instrumentalness = []
-liveness = []
-valence = []
-tempo = []
+#Creating one empty list for each Audio Feature
+for k in range(len(audioFeat)): 
+    (locals()[audioFeat[k]]) = []
 
-
-for i in range(len(all_tracks)):
-    title.append(all_tracks[i]["track"]["name"])
-    artist.append(all_tracks[i]['track']['artists'][0]['name'])
-    song_uri = all_tracks[i]["track"]["uri"]
+#With this first loop I get the general features and collect those which I need (title, artist)
+for j in range(len(all_tracks)):
+    title.append(all_tracks[j]["track"]["name"])
+    artist.append(all_tracks[j]['track']['artists'][0]['name'])
+    song_uri = all_tracks[j]["track"]["uri"]
     audio = sp.audio_features(song_uri)
-    danceability.append(audio[0]['danceability'])
-    energy.append(audio[0]['energy'])
-    key.append(audio[0]['key'])
-    loudness.append(audio[0]['loudness'])
-    mode.append(audio[0]['mode'])
-    speechiness.append(audio[0]['speechiness'])
-    acousticness.append(audio[0]['acousticness'])
-    instrumentalness.append(audio[0]['instrumentalness'])
-    liveness.append(audio[0]['liveness'])
-    valence.append(audio[0]['valence'])
-    tempo.append(audio[0]['tempo'])
+    #With this second loop I get and collect the audio Features I need
+    for i in range(len(audioFeat)): 
+        (locals()[audioFeat[i]]).append(audio[0][audioFeat[i]])
+        
     sleep(randint(1,3))
     
 audioFeatures = pd.DataFrame({"title":title,
